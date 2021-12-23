@@ -5,20 +5,23 @@ class Block {
     index: number,
     previousHash: string,
     timestamp: number,
+    nonce: number,
     data: string
   ): string =>
-    CryptoJS.SHA256(index + previousHash + timestamp + data).toString();
+    CryptoJS.SHA256(index + previousHash + timestamp + nonce + data).toString();
 
   static validateStructure = (aBlock: Block): boolean =>
     typeof aBlock.index === "number" &&
     typeof aBlock.hash === "string" &&
     typeof aBlock.previousHash === "string" &&
     typeof aBlock.timestamp === "number" &&
+    typeof aBlock.nonce === "number" &&
     typeof aBlock.data === "string";
 
   public index: number;
   public hash: string;
   public previousHash: string;
+  public nonce: number;
   public data: string;
   public timestamp: number;
 
@@ -27,18 +30,27 @@ class Block {
     index: number,
     hash: string,
     previousHash: string,
+    nonce: number,
     data: string,
     timestamp: number
   ) {
     this.index = index;
     this.hash = hash;
     this.previousHash = previousHash;
+    this.nonce = nonce;
     this.data = data;
     this.timestamp = timestamp;
   }
 }
 
-const genesisBlock: Block = new Block(0, "10120202010", "", "Hello", 123456);
+const genesisBlock: Block = new Block(
+  0,
+  "10120202010",
+  "",
+  0,
+  "genesisBlock",
+  123456
+);
 
 let blockchain: Block[] = [genesisBlock];
 
@@ -48,7 +60,7 @@ const getLatestBlock = (): Block => blockchain[blockchain.length - 1];
 
 const getNewTimeStamp = (): number => Math.round(new Date().getTime() / 1000);
 
-const createNewBlock = (data: string): Block => {
+const createNewBlock = (nonce: number, data: string): Block => {
   const previousBlock: Block = getLatestBlock();
   const newIndex: number = previousBlock.index + 1;
   const newTimestamp: number = getNewTimeStamp();
@@ -56,17 +68,19 @@ const createNewBlock = (data: string): Block => {
     newIndex,
     previousBlock.hash,
     newTimestamp,
+    nonce,
     data
   );
   const newBlock: Block = new Block(
     newIndex,
     newHash,
     previousBlock.hash,
+    nonce,
     data,
     newTimestamp
   );
-  addBlock(newBlock);
-  return newBlock;
+  if (addBlock(newBlock)) return newBlock;
+  else return null;
 };
 
 const getHashforBlock = (aBlock: Block): string =>
@@ -74,6 +88,7 @@ const getHashforBlock = (aBlock: Block): string =>
     aBlock.index,
     aBlock.previousHash,
     aBlock.timestamp,
+    aBlock.nonce,
     aBlock.data
   );
 
@@ -84,6 +99,8 @@ const isBlockValid = (candidateBlock: Block, previousBlock: Block): boolean => {
     return false;
   } else if (previousBlock.hash !== candidateBlock.previousHash) {
     return false;
+  } else if (!candidateBlock.hash.startsWith("00000")) {
+    return false;
   } else if (getHashforBlock(candidateBlock) !== candidateBlock.hash) {
     return false;
   } else {
@@ -91,16 +108,20 @@ const isBlockValid = (candidateBlock: Block, previousBlock: Block): boolean => {
   }
 };
 
-const addBlock = (candidateBlock: Block): void => {
+const addBlock = (candidateBlock: Block): boolean => {
   if (isBlockValid(candidateBlock, getLatestBlock())) {
     blockchain.push(candidateBlock);
+    return true;
   }
+  return false;
 };
 
-createNewBlock("second block");
-createNewBlock("third block");
-createNewBlock("fourth block");
-
-console.log(blockchain);
-
+console.log(getLatestBlock());
+var last_nonce = getLatestBlock().nonce;
+while (getLatestBlock().index < 3) {
+  if (createNewBlock(last_nonce + 1, getLatestBlock().index + 1 + "rd"))
+    console.log(getLatestBlock());
+  else last_nonce += 1;
+}
+console.log("완료");
 export {};
